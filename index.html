@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مطعم الشاطر صلاح | Al-Shater Salah Restaurant</title>
+  
+  <!-- Google Font: Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            cairo: ['Cairo', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              dark: '#1C1917',
+              red: '#B91C1C',
+              redHover: '#991B1B',
+              amber: '#D97706',
+              gold: '#F59E0B',
+              cream: '#FAF7F2',
+              brown: '#5C2D16'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Cairo', sans-serif;
+      background-color: #FAF7F2;
+      color: #1C1917;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #D97706;
+      border-radius: 9999px;
+    }
+
+    /* Hero Dark Overlay */
+    .hero-bg {
+      background-image: linear-gradient(to bottom, rgba(20, 14, 10, 0.72), rgba(28, 25, 23, 0.88)),
+        url('https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=1400&q=80');
+      background-size: cover;
+      background-position: center;
+    }
+
+    /* Ingredient Pill Strikethrough Animation */
+    .ing-pill {
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .ing-pill.removed {
+      text-decoration: line-through;
+      text-decoration-thickness: 2px;
+      text-decoration-color: #DC2626;
+      background-color: #FEE2E2;
+      color: #991B1B;
+      border-color: #FCA5A5;
+      opacity: 0.85;
+    }
+
+    /* Leaflet Map Fix */
+    #map-container {
+      height: 260px;
+      width: 100%;
+      border-radius: 1rem;
+      z-index: 10;
+    }
+
+    /* Hide scrollbar for category horizontal scroll */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] hidden transition-all duration-300">
+    <div class="bg-brand-dark text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-amber-500/40">
+      <i id="toast-icon" class="fa-solid fa-circle-check text-amber-400 text-lg"></i>
+      <span id="toast-msg" class="text-sm font-bold">تمت الإضافة إلى السلة</span>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm border-b border-amber-900/10">
+    <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+      
+      <!-- Right Side (in RTL): 3-Line Menu Button -->
+      <button onclick="toggleDrawer()" aria-label="القائمة" class="w-11 h-11 rounded-xl bg-brand-brown text-white flex items-center justify-center shadow-md hover:bg-amber-900 active:scale-95 transition">
+        <i class="fa-solid fa-bars text-xl"></i>
+      </button>
+
+      <!-- Center: Restaurant Name + Order Mode Badge -->
+      <div onclick="navigateTo('home')" class="flex flex-col items-center cursor-pointer">
+        <h1 class="text-lg sm:text-xl font-black text-brand-brown tracking-tight leading-none">مطعم الشاطر صلاح</h1>
+        <span id="header-mode-badge" class="text-[11px] font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full mt-1">
+          أطيب المأكولات والوجبات السريعة
+        </span>
+      </div>
+
+      <!-- Left Side (in RTL): Cart Button & Small Circular Logo -->
+      <div class="flex items-center gap-2.5">
+        <!-- Cart Icon -->
+        <button onclick="toggleCartModal()" aria-label="سلة الطلبات" class="relative w-11 h-11 rounded-xl bg-amber-50 text-brand-brown border border-amber-200 flex items-center justify-center hover:bg-amber-100 active:scale-95 transition">
+          <i class="fa-solid fa-basket-shopping text-lg"></i>
+          <span id="cart-badge" class="absolute -top-1.5 -right-1.5 bg-brand-red text-white text-xs font-extrabold w-5 h-5 rounded-full flex items-center justify-center shadow">0</span>
+        </button>
+
+        <!-- Small Restaurant Logo -->
+        <div onclick="navigateTo('home')" class="w-11 h-11 rounded-full bg-gradient-to-br from-brand-brown to-brand-red p-0.5 shadow-md cursor-pointer shrink-0">
+          <div class="w-full h-full rounded-full bg-brand-dark flex items-center justify-center overflow-hidden">
+            <img src="./shater salah.PNG" 
+                 onerror="this.src='https://placehold.co/100x100/5C2D16/F59E0B?text=صلاح'" 
+                 alt="شعار مطعم الشاطر صلاح" 
+                 class="w-full h-full object-cover" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- Right Side Navigation Drawer (3-line menu) -->
+  <div id="drawer-backdrop" onclick="toggleDrawer()" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 hidden transition-opacity"></div>
+  <aside id="nav-drawer" class="fixed top-0 right-0 h-full w-72 sm:w-80 bg-white z-50 shadow-2xl transform translate-x-full transition-transform duration-300 flex flex-col">
+    <!-- Drawer Header -->
+    <div class="p-5 bg-gradient-to-l from-brand-brown to-stone-900 text-white flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <img src="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80" 
+             onerror="this.src='https://placehold.co/100x100/5C2D16/F59E0B?text=صلاح'"
+             alt="Logo" class="w-12 h-12 rounded-full object-cover border-2 border-amber-400" />
+        <div>
+          <h2 class="font-extrabold text-base">مطعم الشاطر صلاح</h2>
+          <p class="text-xs text-amber-300">طرابلس - لبنان</p>
+        </div>
+      </div>
+      <button onclick="toggleDrawer()" class="w-9 h-9 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+
+    <!-- 5 Required Navigation Links -->
+    <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+      <button onclick="navigateTo('home'); toggleDrawer();" data-nav="home" class="nav-item w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-stone-700 hover:bg-amber-50 hover:text-brand-brown transition text-right">
+        <i class="fa-solid fa-house w-5 text-center text-brand-amber"></i>
+        <span>الصفحة الرئيسية</span>
+      </button>
+
+      <button onclick="navigateTo('menu'); toggleDrawer();" data-nav="menu" class="nav-item w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-stone-700 hover:bg-amber-50 hover:text-brand-brown transition text-right">
+        <i class="fa-solid fa-utensils w-5 text-center text-brand-amber"></i>
+        <span>صفحة المنتجات (المنيو)</span>
+      </button>
+
+      <button onclick="navigateTo('about'); toggleDrawer();" data-nav="about" class="nav-item w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-stone-700 hover:bg-amber-50 hover:text-brand-brown transition text-right">
+        <i class="fa-solid fa-circle-info w-5 text-center text-brand-amber"></i>
+        <span>عنا</span>
+      </button>
+
+      <button onclick="navigateTo('contact'); toggleDrawer();" data-nav="contact" class="nav-item w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-stone-700 hover:bg-amber-50 hover:text-brand-brown transition text-right">
+        <i class="fa-solid fa-phone-volume w-5 text-center text-brand-amber"></i>
+        <span>تواصل معنا</span>
+      </button>
+
+      <button onclick="navigateTo('details'); toggleDrawer();" data-nav="details" class="nav-item w-full flex items-center gap-3.5 px-4 py-3.5 rounded-xl font-bold text-stone-700 hover:bg-amber-50 hover:text-brand-brown transition text-right">
+        <i class="fa-solid fa-address-card w-5 text-center text-brand-amber"></i>
+        <div class="flex-1 flex items-center justify-between">
+          <span>تفاصيلي</span>
+          <span id="drawer-saved-tag" class="hidden text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full">محفوظ</span>
+        </div>
+      </button>
+    </nav>
+
+    <!-- Drawer Footer -->
+    <div class="p-4 border-t border-stone-100 bg-stone-50 text-center">
+      <p class="text-xs text-stone-500 font-semibold">ساعات العمل: 11:00 صباحاً - 1:00 ليلاً</p>
+      <a href="https://wa.me/96181400899" target="_blank" class="mt-2 inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-green-600 text-white text-xs font-bold hover:bg-green-700 transition">
+        <i class="fa-brands fa-whatsapp text-base"></i>
+        <span>تواصل مباشر عبر واتساب</span>
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="flex-1">
+
+    <!-- ==================== 1. HOME PAGE ==================== -->
+    <section id="page-home" class="page-section">
+      <!-- Hero Banner -->
+      <div class="hero-bg min-h-[78vh] flex items-center justify-center px-4 py-12 text-center text-white relative">
+        <div class="max-w-2xl mx-auto flex flex-col items-center">
+          
+          <!-- Restaurant Circular Emblem -->
+          <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full p-1 bg-gradient-to-tr from-amber-500 via-yellow-300 to-brand-red shadow-2xl mb-5">
+            <img src="./shater salah.PNG" 
+                 onerror="this.src='https://placehold.co/200x200/5C2D16/F59E0B?text=الشاطر+صلاح'"
+                 alt="مطعم الشاطر صلاح" 
+                 class="w-full h-full rounded-full object-cover border-2 border-stone-900" />
+          </div>
+
+          <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-xs sm:text-sm font-bold mb-3">
+            <i class="fa-solid fa-location-dot"></i> طرابلس - لبنان
+          </span>
+
+          <h2 class="text-3xl sm:text-5xl font-black leading-tight mb-4 drop-shadow-lg">
+            مرحباً بك في <span class="text-amber-400">مطعم الشاطر صلاح</span>
+          </h2>
+
+          <p class="text-stone-200 text-sm sm:text-lg max-w-xl leading-relaxed mb-8 font-medium">
+            أشهى السندويشات، الشاورما، البرغر، والوجبات السريعة المحضّرة طازجة يومياً بأجود المكونات. اختر طريقة طلبك الآن:
+          </p>
+
+          <!-- Two Primary Action Buttons -->
+          <div class="w-full max-w-md grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Button 1: Take Away -->
+            <button onclick="handleStartOrder('takeaway')" class="group relative overflow-hidden bg-gradient-to-r from-brand-amber to-amber-500 hover:from-amber-500 hover:to-yellow-500 text-stone-950 font-black py-4 px-6 rounded-2xl shadow-xl shadow-amber-900/40 flex flex-col items-center justify-center gap-1 active:scale-95 transition">
+              <div class="flex items-center gap-2 text-lg">
+                <i class="fa-solid fa-motorcycle text-xl"></i>
+                <span>طلب Take Away</span>
+              </div>
+              <span class="text-xs font-bold text-stone-900/80">توصيل أو استلام خارج المحل</span>
+            </button>
+
+            <!-- Button 2: Dine In -->
+            <button onclick="handleStartOrder('dinein')" class="group bg-white/95 hover:bg-white text-brand-brown font-black py-4 px-6 rounded-2xl shadow-xl flex flex-col items-center justify-center gap-1 border-2 border-amber-400/50 active:scale-95 transition">
+              <div class="flex items-center gap-2 text-lg">
+                <i class="fa-solid fa-utensils text-xl text-brand-red"></i>
+                <span>طلب داخل المحل</span>
+              </div>
+              <span class="text-xs font-bold text-stone-500">تصفح المنيو واطلب لطاولتك</span>
+            </button>
+          </div>
+
+          <!-- Quick Saved Address Notice if exists -->
+          <div id="home-saved-banner" class="hidden mt-6 bg-black/50 backdrop-blur-md border border-white/15 rounded-2xl px-4 py-2.5 text-xs text-amber-200 flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-green-400"></i>
+            <span>عنوان التوصيل محفوظ مسبقاً (<strong id="home-saved-name"></strong>)</span>
+            <button onclick="navigateTo('details')" class="underline text-white font-bold mr-1 hover:text-amber-300">تعديل</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Features Strip -->
+      <div class="max-w-5xl mx-auto px-4 -mt-8 relative z-20">
+        <div class="grid grid-cols-3 gap-2.5 sm:gap-4 bg-white p-4 sm:p-6 rounded-3xl shadow-lg border border-amber-900/10 text-center">
+          <div class="flex flex-col items-center">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-100 text-brand-amber flex items-center justify-center mb-2">
+              <i class="fa-solid fa-sliders text-lg"></i>
+            </div>
+            <h3 class="font-extrabold text-xs sm:text-sm text-stone-800">شطب المكونات</h3>
+            <p class="text-[11px] text-stone-500 hidden sm:block">اختر مكونات سندويشتك على ذوقك</p>
+          </div>
+          <div class="flex flex-col items-center">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-red-100 text-brand-red flex items-center justify-center mb-2">
+              <i class="fa-solid fa-truck-fast text-lg"></i>
+            </div>
+            <h3 class="font-extrabold text-xs sm:text-sm text-stone-800">توصيل سريع</h3>
+            <p class="text-[11px] text-stone-500 hidden sm:block">تحديد دقيق على الخريطة</p>
+          </div>
+          <div class="flex flex-col items-center">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-green-100 text-green-700 flex items-center justify-center mb-2">
+              <i class="fa-brands fa-whatsapp text-xl"></i>
+            </div>
+            <h3 class="font-extrabold text-xs sm:text-sm text-stone-800">طلب عبر واتساب</h3>
+            <p class="text-[11px] text-stone-500 hidden sm:block">إرسال فوري بدون تعقيد</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 2. MENU PAGE ==================== -->
+    <section id="page-menu" class="page-section hidden max-w-5xl mx-auto px-4 py-6">
+      
+      <!-- Order Type Switcher Bar -->
+      <div class="bg-white rounded-2xl p-3.5 shadow-sm border border-amber-900/10 mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <span class="text-xs font-bold text-stone-500">نوع الطلب الحالي:</span>
+          <div class="inline-flex rounded-xl bg-stone-100 p-1">
+            <button onclick="switchOrderMode('dinein')" id="mode-btn-dinein" class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition">
+              <i class="fa-solid fa-utensils ml-1"></i> داخل المحل
+            </button>
+            <button onclick="switchOrderMode('takeaway')" id="mode-btn-takeaway" class="px-3 py-1.5 rounded-lg text-xs font-extrabold transition">
+              <i class="fa-solid fa-motorcycle ml-1"></i> Take Away
+            </button>
+          </div>
+        </div>
+
+        <div id="menu-delivery-info" class="hidden text-xs font-bold text-brand-brown bg-amber-50 px-3 py-1.5 rounded-xl border border-amber-200 flex items-center gap-2">
+          <i class="fa-solid fa-location-dot text-brand-red"></i>
+          <span>التوصيل إلى: <span id="menu-customer-addr" class="underline"></span> (<span id="menu-delivery-fee-label">$1.20</span>)</span>
+          <button onclick="navigateTo('details')" class="text-brand-red hover:underline mr-1">[تعديل]</button>
+        </div>
+      </div>
+
+      <!-- Helper Hint for Ingredient Strikethrough -->
+      <div class="bg-gradient-to-l from-amber-100/80 to-orange-50 border border-amber-300/60 rounded-2xl p-3.5 mb-5 flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-brand-amber text-white flex items-center justify-center shrink-0">
+          <i class="fa-solid fa-hand-pointer"></i>
+        </div>
+        <p class="text-xs sm:text-sm font-bold text-stone-800">
+          ميزة التخصيص: <span class="font-normal text-stone-600">انقر على أي مكون تحت السندويشة أو الوجبة (مثل <span class="line-through text-red-600 font-bold">ثوم</span> أو <span class="line-through text-red-600 font-bold">كبيس</span>) لشطبه قبل الإضافة إلى السلة!</span>
+        </p>
+      </div>
+
+      <!-- Category Filter Tabs -->
+      <div class="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-4">
+        <button onclick="filterMenu('all')" data-cat="all" class="cat-btn active shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-brand-brown text-white shadow-sm transition">
+          الكل
+        </button>
+        <button onclick="filterMenu('sandwiches')" data-cat="sandwiches" class="cat-btn shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-white text-stone-700 border border-stone-200 hover:bg-amber-50 transition">
+          <i class="fa-solid fa-hotdog ml-1 text-amber-600"></i> السندويشات
+        </button>
+        <button onclick="filterMenu('meals')" data-cat="meals" class="cat-btn shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-white text-stone-700 border border-stone-200 hover:bg-amber-50 transition">
+          <i class="fa-solid fa-drumstick-bite ml-1 text-amber-600"></i> الوجبات
+        </button>
+        <button onclick="filterMenu('fastfood')" data-cat="fastfood" class="cat-btn shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-white text-stone-700 border border-stone-200 hover:bg-amber-50 transition">
+          <i class="fa-solid fa-burger ml-1 text-amber-600"></i> الوجبات السريعة
+        </button>
+        <button onclick="filterMenu('drinks')" data-cat="drinks" class="cat-btn shrink-0 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold bg-white text-stone-700 border border-stone-200 hover:bg-amber-50 transition">
+          <i class="fa-solid fa-glass-water ml-1 text-amber-600"></i> العصائر والمشروبات
+        </button>
+      </div>
+
+      <!-- Menu Items Grid -->
+      <div id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Populated dynamically via JS -->
+      </div>
+    </section>
+
+    <!-- ==================== 3. MY DETAILS & TAKE AWAY LOCATION PAGE ==================== -->
+    <section id="page-details" class="page-section hidden max-w-3xl mx-auto px-4 py-6">
+      <div class="bg-white rounded-3xl shadow-md border border-amber-900/10 overflow-hidden">
+        
+        <!-- Header Banner -->
+        <div class="bg-gradient-to-l from-brand-brown to-stone-900 p-6 text-white">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 text-xl">
+              <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+            <div>
+              <h2 class="text-xl font-black">تفاصيلي وعنوان التوصيل (Take Away)</h2>
+              <p class="text-xs text-stone-300 mt-0.5">تُحفظ هذه المعلومات لمرة واحدة فقط لتسهيل طلباتك القادمة، ويمكنك تعديلها بأي وقت.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Form -->
+        <form id="customer-details-form" onsubmit="saveCustomerDetails(event)" class="p-5 sm:p-7 space-y-5">
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Name -->
+            <div>
+              <label class="block text-xs font-extrabold text-stone-700 mb-1.5">الاسم الكامل <span class="text-red-600">*</span></label>
+              <div class="relative">
+                <i class="fa-solid fa-user absolute right-3.5 top-3.5 text-stone-400 text-sm"></i>
+                <input type="text" id="cust-name" required placeholder="مثال: أحمد محمد" class="w-full pr-10 pl-4 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold" />
+              </div>
+            </div>
+
+            <!-- Phone -->
+            <div>
+              <label class="block text-xs font-extrabold text-stone-700 mb-1.5">رقم الهاتف (واتساب) <span class="text-red-600">*</span></label>
+              <div class="relative">
+                <i class="fa-solid fa-phone absolute right-3.5 top-3.5 text-stone-400 text-sm"></i>
+                <input type="tel" id="cust-phone" required placeholder="مثال: 70 123 456" class="w-full pr-10 pl-4 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold text-left" dir="ltr" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Detailed Address -->
+          <div>
+            <label class="block text-xs font-extrabold text-stone-700 mb-1.5">المنطقة / العنوان التفصيلي <span class="text-red-600">*</span></label>
+            <div class="relative">
+              <i class="fa-solid fa-location-dot absolute right-3.5 top-3.5 text-stone-400 text-sm"></i>
+              <input type="text" id="cust-address" required placeholder="مثال: طرابلس - أبي سمراء - شارع المئتين" class="w-full pr-10 pl-4 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <!-- Building Name -->
+            <div>
+              <label class="block text-xs font-extrabold text-stone-700 mb-1.5">اسم المبنى <span class="text-red-600">*</span></label>
+              <input type="text" id="cust-building" required placeholder="مثال: بناية السلام" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold" />
+            </div>
+
+            <!-- Floor -->
+            <div>
+              <label class="block text-xs font-extrabold text-stone-700 mb-1.5">الطابق <span class="text-red-600">*</span></label>
+              <input type="text" id="cust-floor" required placeholder="مثال: الطابق الثالث" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold" />
+            </div>
+
+            <!-- Famous Landmark -->
+            <div>
+              <label class="block text-xs font-extrabold text-stone-700 mb-1.5">محل مشهور تحت البيت / قريب</label>
+              <input type="text" id="cust-landmark" placeholder="مثال: فوق صيدلية الشفاء" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 focus:border-brand-amber focus:ring-2 focus:ring-amber-200 outline-none text-sm font-semibold" />
+            </div>
+          </div>
+
+          <!-- Interactive Map Location Picker -->
+          <div class="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 class="text-sm font-extrabold text-stone-800 flex items-center gap-1.5">
+                  <i class="fa-solid fa-map-pin text-brand-red"></i>
+                  <span>حدد موقعك على الخريطة (Maps)</span>
+                </h3>
+                <p class="text-[11px] text-stone-500">انقر على الخريطة لوضع الدبوس أو اضغط على زر تحديد موقعي الحالي</p>
+              </div>
+              <button type="button" onclick="locateUserGPS()" class="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition">
+                <i class="fa-solid fa-crosshairs"></i>
+                <span>تحديد موقعي (GPS)</span>
+              </button>
+            </div>
+
+            <!-- Leaflet Map Container -->
+            <div id="map-container" class="border border-stone-300 shadow-inner"></div>
+
+            <!-- Distance & Automatic Delivery Fee Box -->
+            <div class="bg-white p-3.5 rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div class="text-xs text-stone-500 font-bold">المسافة عن مطعم الشاطر صلاح:</div>
+                <div class="text-base font-black text-stone-800 flex items-center gap-2">
+                  <span id="calc-distance-text">1.5 كم</span>
+                  <span id="calc-distance-badge" class="text-[11px] bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold">أقل من 100 كلم</span>
+                </div>
+              </div>
+
+              <div class="sm:text-left">
+                <div class="text-xs text-stone-500 font-bold">أجرة الدلفري التلقائية:</div>
+                <div class="text-xl font-black text-brand-red">
+                  <span id="calc-fee-usd">$1.20</span>
+                  <span class="text-xs font-bold text-stone-500">(<span id="calc-fee-lbp">107,400</span> ل.ل)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Delivery Fee Rule Info -->
+            <div class="text-[11px] text-stone-500 flex items-center justify-between flex-wrap gap-2 pt-1">
+              <span>* تعرفة التوصيل: أقل من 100 كلم = <strong>$1.20</strong> | أبعد من 100 كلم = <strong>$2.00</strong></span>
+              <button type="button" onclick="toggleFarDistanceTest()" class="text-amber-700 underline font-bold hover:text-amber-900">
+                تجربة مسافة أبعد من 100 كلم
+              </button>
+            </div>
+          </div>
+
+          <!-- Submit & Save Button -->
+          <div class="pt-2 flex flex-col sm:flex-row gap-3">
+            <button type="submit" class="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-l from-brand-brown to-brand-red hover:opacity-95 text-white font-black text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-98">
+              <i class="fa-solid fa-floppy-disk"></i>
+              <span>حفظ المعلومات والانتقال إلى المنيو</span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+    <!-- ==================== 4. ABOUT US PAGE (عنا) ==================== -->
+    <section id="page-about" class="page-section hidden max-w-4xl mx-auto px-4 py-6">
+      <div class="bg-white rounded-3xl shadow-md border border-amber-900/10 overflow-hidden">
+        <div class="h-56 sm:h-72 relative">
+          <img src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80" 
+               alt="مطعم الشاطر صلاح" class="w-full h-full object-cover" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent flex items-end p-6">
+            <div class="text-white">
+              <span class="text-xs font-bold bg-amber-500 text-stone-950 px-3 py-1 rounded-full">قصتنا وجودتنا</span>
+              <h2 class="text-2xl sm:text-3xl font-black mt-2">عنا - مطعم الشاطر صلاح</h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-6 sm:p-8 space-y-6">
+          <p class="text-stone-700 leading-relaxed text-sm sm:text-base font-medium">
+            تأسس <strong>مطعم الشاطر صلاح</strong> في قلب مدينة طرابلس ليقدّم لزبائنه الكرام تجربة طعام استثنائية تجمع بين الطعم الأصيل للوجبات والسندويشات اللبنانية والسرعة في التحضير والتوصيل. نحن نؤمن بأن كل زبون يستحق أن يتناول وجبته بالطريقة التي يحبها تماماً، ولذلك أتحنا لك ميزة تخصيص مكونات كل سندويشة بلمسة واحدة!
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200/70">
+              <i class="fa-solid fa-award text-2xl text-brand-amber mb-2"></i>
+              <h3 class="font-extrabold text-stone-800 text-sm">مكونات طازجة 100%</h3>
+              <p class="text-xs text-stone-600 mt-1">نستخدم أجود أنواع اللحوم والدجاج والخضار الطازجة يومياً.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-red-50 border border-red-200/70">
+              <i class="fa-solid fa-fire-burner text-2xl text-brand-red mb-2"></i>
+              <h3 class="font-extrabold text-stone-800 text-sm">تحضير فوري وساخن</h3>
+              <p class="text-xs text-stone-600 mt-1">تُحضّر جميع الطلبات فور استلامها لتصلك ساخنة وشهية.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-green-50 border border-green-200/70">
+              <i class="fa-solid fa-face-smile-beam text-2xl text-green-700 mb-2"></i>
+              <h3 class="font-extrabold text-stone-800 text-sm">خدمة زبائن مميزة</h3>
+              <p class="text-xs text-stone-600 mt-1">سهولة تامة في الطلب داخل المحل أو عبر التوصيل السريع.</p>
+            </div>
+          </div>
+
+          <div class="pt-2 text-center">
+            <button onclick="navigateTo('menu')" class="px-8 py-3.5 rounded-2xl bg-brand-brown hover:bg-amber-900 text-white font-extrabold text-sm shadow-md transition">
+              استعرض المنيو الآن
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 5. CONTACT US PAGE (تواصل معنا) ==================== -->
+    <section id="page-contact" class="page-section hidden max-w-4xl mx-auto px-4 py-6">
+      <div class="bg-white rounded-3xl shadow-md border border-amber-900/10 p-6 sm:p-8">
+        <div class="text-center max-w-lg mx-auto mb-8">
+          <span class="text-xs font-extrabold text-brand-amber bg-amber-100 px-3 py-1 rounded-full">نحن دائماً بخدمتكم</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-stone-800 mt-2">تواصل معنا</h2>
+          <p class="text-xs sm:text-sm text-stone-500 mt-1">للاستفسارات، الحجوزات، أو الطلبات المباشرة تواصل مع مطعم الشاطر صلاح</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Contact Info Cards -->
+          <div class="space-y-4">
+            <div class="flex items-start gap-4 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+              <div class="w-11 h-11 rounded-xl bg-brand-red text-white flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-location-dot text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-stone-800">عنوان المطعم</h3>
+                <p class="text-xs text-stone-600 mt-1">لبنان - طرابلس - أبي سمراء، الشارع العام</p>
+                <a href="https://maps.google.com/?q=34.4335,35.8442" target="_blank" class="inline-block mt-2 text-xs font-bold text-brand-red hover:underline">
+                  افتح الموقع على خرائط غوغل <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i>
+                </a>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+              <div class="w-11 h-11 rounded-xl bg-green-600 text-white flex items-center justify-center shrink-0">
+                <i class="fa-brands fa-whatsapp text-xl"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-stone-800">الهاتف والواتساب</h3>
+                <p class="text-xs text-stone-600 mt-1" dir="ltr">+961 81 400 899</p>
+                <a href="https://wa.me/96181400899" target="_blank" class="inline-block mt-2 text-xs font-bold text-green-700 hover:underline">
+                  مراسلة فورية عبر واتساب
+                </a>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-4 p-4 rounded-2xl bg-stone-50 border border-stone-200">
+              <div class="w-11 h-11 rounded-xl bg-brand-amber text-white flex items-center justify-center shrink-0">
+                <i class="fa-solid fa-clock text-lg"></i>
+              </div>
+              <div>
+                <h3 class="font-extrabold text-sm text-stone-800">ساعات العمل</h3>
+                <p class="text-xs text-stone-600 mt-1">يومياً من الساعة 11:00 صباحاً حتى 1:00 بعد منتصف الليل</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Message Form -->
+          <div class="bg-amber-50/60 p-5 rounded-2xl border border-amber-200/80">
+            <h3 class="font-extrabold text-base text-brand-brown mb-4">أرسل لنا ملاحظة سريعة</h3>
+            <form onsubmit="sendContactWhatsApp(event)" class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-stone-700 mb-1">الاسم</label>
+                <input type="text" id="contact-name" required placeholder="اسمك الكريم" class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-sm outline-none focus:border-brand-amber" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-stone-700 mb-1">رسالتك أو استفسارك</label>
+                <textarea id="contact-msg" rows="3" required placeholder="اكتب رسالتك هنا..." class="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-sm outline-none focus:border-brand-amber"></textarea>
+              </div>
+              <button type="submit" class="w-full py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow transition">
+                <i class="fa-brands fa-whatsapp text-lg"></i>
+                <span>إرسال عبر واتساب</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Floating Bottom Cart Bar (Mobile Friendly when cart has items) -->
+  <div id="floating-cart-bar" class="fixed bottom-4 left-4 right-4 z-30 max-w-xl mx-auto hidden">
+    <button onclick="toggleCartModal()" class="w-full bg-brand-dark text-white px-5 py-3.5 rounded-2xl shadow-2xl border border-amber-500/40 flex items-center justify-between hover:bg-stone-900 transition">
+      <div class="flex items-center gap-3">
+        <span id="float-cart-count" class="bg-brand-amber text-stone-950 font-black w-7 h-7 rounded-xl flex items-center justify-center text-sm">0</span>
+        <span class="font-extrabold text-sm">عرض سلة الطلبات وإرسال</span>
+      </div>
+      <div class="text-left">
+        <span id="float-cart-total" class="font-black text-amber-400 text-base">$0.00</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- ==================== SHOPPING CART MODAL ==================== -->
+  <div id="cart-modal" class="fixed inset-0 z-50 hidden">
+    <div onclick="toggleCartModal()" class="absolute inset-0 bg-black/65 backdrop-blur-xs"></div>
+    <div class="relative z-10 max-w-lg mx-auto mt-6 sm:mt-10 bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[88vh] mx-3 sm:mx-auto">
+      
+      <!-- Cart Header -->
+      <div class="p-4 sm:p-5 bg-brand-brown text-white flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-basket-shopping text-amber-400 text-xl"></i>
+          <h3 class="font-black text-lg">سلة طلباتك</h3>
+        </div>
+        <button onclick="toggleCartModal()" class="w-9 h-9 rounded-xl bg-white/15 hover:bg-white/25 flex items-center justify-center">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Order Mode Selector inside Cart -->
+      <div class="px-5 py-3 bg-amber-50 border-b border-amber-200/70 flex items-center justify-between">
+        <span class="text-xs font-extrabold text-stone-700">طريقة الاستلام:</span>
+        <div class="inline-flex rounded-xl bg-white p-1 border border-amber-200">
+          <button onclick="switchOrderMode('dinein')" id="cart-mode-dinein" class="px-3 py-1 rounded-lg text-xs font-extrabold transition">داخل المحل</button>
+          <button onclick="switchOrderMode('takeaway')" id="cart-mode-takeaway" class="px-3 py-1 rounded-lg text-xs font-extrabold transition">Take Away</button>
+        </div>
+      </div>
+
+      <!-- Cart Items List -->
+      <div id="cart-items-container" class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Cart Totals & WhatsApp Checkout -->
+      <div id="cart-footer" class="p-4 sm:p-5 bg-stone-50 border-t border-stone-200 space-y-3">
+        <div class="space-y-1.5 text-xs sm:text-sm">
+          <div class="flex justify-between text-stone-600 font-bold">
+            <span>المجموع الفرعي:</span>
+            <span id="cart-subtotal">$0.00</span>
+          </div>
+          <div id="cart-delivery-row" class="flex justify-between text-stone-600 font-bold hidden">
+            <span>أجرة الدلفري (<span id="cart-dist-label">أقل من 100 كلم</span>):</span>
+            <span id="cart-delivery-fee" class="text-brand-red">$1.20</span>
+          </div>
+          <div class="flex justify-between text-base sm:text-lg font-black text-stone-900 pt-1.5 border-t border-stone-200">
+            <span>الإجمالي النهائي:</span>
+            <div class="text-left">
+              <span id="cart-final-total" class="text-brand-brown">$0.00</span>
+              <span class="block text-[11px] font-bold text-stone-500" id="cart-final-lbp">0 ل.ل</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Take Away Customer Summary in Cart -->
+        <div id="cart-customer-box" class="hidden bg-white p-3 rounded-xl border border-stone-200 text-xs space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-extrabold text-brand-brown"><i class="fa-solid fa-location-dot text-brand-red ml-1"></i> عنوان التوصيل:</span>
+            <button onclick="toggleCartModal(); navigateTo('details');" class="text-amber-700 font-bold underline">تعديل العنوان</button>
+          </div>
+          <p id="cart-customer-summary" class="text-stone-600 leading-relaxed"></p>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button onclick="clearCart()" class="px-4 py-3 rounded-xl border border-stone-300 text-stone-600 hover:bg-stone-200 text-xs font-extrabold transition">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+          <button onclick="checkoutViaWhatsApp()" class="flex-1 py-3.5 px-5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-black text-sm sm:text-base shadow-lg flex items-center justify-center gap-2 transition active:scale-98">
+            <i class="fa-brands fa-whatsapp text-xl"></i>
+            <span>إرسال الطلب عبر واتساب</span>
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-brand-dark text-stone-400 py-6 px-4 text-center text-xs mt-12 border-t border-stone-800">
+    <p class="font-bold text-stone-200 text-sm mb-1">مطعم الشاطر صلاح - طرابلس، لبنان</p>
+    <p>© 2026 جميع الحقوق محفوظة | خدمة الطلب الذكي وتخصيص المكونات</p>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // ==================== CONFIGURATION & STATE ====================
+    const RESTAURANT_WHATSAPP = "96181400899"; // رقم واتساب المطعم
+    const LBP_RATE = 89500; // سعر الصرف بالليرة اللبنانية
+    const RESTAURANT_COORDS = { lat: 34.4335, lng: 35.8442 }; // طرابلس - أبي سمراء
+
+    // Menu Items with clickable ingredients (المكونات القابلة للشطب)
+    const MENU_ITEMS = [
+      {
+        id: 1,
+        name: "لفة شاورما دجاج",
+        category: "sandwiches",
+        price: 3.50,
+        image: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=600&q=80",
+        desc: "شاورما دجاج متبلة على السيخ بخبز الصاج أو اللبناني المحمص",
+        ingredients: ["ثوم", "كبيس", "بطاطا", "دبس رمان"]
+      },
+      {
+        id: 2,
+        name: "لفة شاورما لحمة",
+        category: "sandwiches",
+        price: 4.50,
+        image: "https://images.unsplash.com/photo-1633321702518-7feccafb94d5?auto=format&fit=crop&w=600&q=80",
+        desc: "شرائح لحم بلدي مشوية بتتبيلة الشاطر صلاح الخاصة",
+        ingredients: ["طراطور", "بقدونس", "بصل", "بندورة", "كبيس", "سماق"]
+      },
+      {
+        id: 3,
+        name: "سندويش طاووق مشوي",
+        category: "sandwiches",
+        price: 4.00,
+        image: "https://images.unsplash.com/photo-1603360946369-dc9bb6258143?auto=format&fit=crop&w=600&q=80",
+        desc: "قطع صدر دجاج متبلة ومشوية على الفحم مع صوص الثوم",
+        ingredients: ["ثوم", "كبيس", "بطاطا", "سلطة ملفوف", "كاتشب"]
+      },
+      {
+        id: 4,
+        name: "سندويش فاهيتا دجاج",
+        category: "sandwiches",
+        price: 4.75,
+        image: "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?auto=format&fit=crop&w=600&q=80",
+        desc: "صدور دجاج مع الفليفلة الملونة والفطر وجبنة الموزاريلا الذائبة",
+        ingredients: ["جبنة موزاريلا", "فليفلة", "فطر", "بصل", "مايونيز", "أفوكادو"]
+      },
+      {
+        id: 5,
+        name: "برغر الشاطر صلاح الكلاسيكي",
+        category: "fastfood",
+        price: 5.00,
+        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+        desc: "قطعة لحم صافي 180 غرام مشوية مع الجبنة والصوص الخاص",
+        ingredients: ["جبنة شيدر", "خس", "بندورة", "بصل", "كبيس", "صوص كوكتيل"]
+      },
+      {
+        id: 6,
+        name: "كريسبي برغر دجاج",
+        category: "fastfood",
+        price: 4.75,
+        image: "https://images.unsplash.com/photo-1615297928064-24977384d0da?auto=format&fit=crop&w=600&q=80",
+        desc: "صدر دجاج مقرمش ذهبي مع سلطة الكول سلو والجبنة",
+        ingredients: ["جبنة", "خس", "كول سلو", "صوص ثوم", "كبيس"]
+      },
+      {
+        id: 7,
+        name: "علبة بطاطا مقلية كبيرة",
+        category: "fastfood",
+        price: 2.50,
+        image: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=600&q=80",
+        desc: "بطاطا مقرمشة ساخنة مع البهارات الخاصة",
+        ingredients: ["بهارات بطاطا", "كاتشب", "مايونيز", "ثوم"]
+      },
+      {
+        id: 8,
+        name: "وجبة شاورما عربي (دبل)",
+        category: "meals",
+        price: 7.50,
+        image: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=80",
+        desc: "قطع شاورما مقطعة ومحمرة تقدم مع بطاطا مقلية وثوم وكبيس",
+        ingredients: ["ثوم", "كبيس", "بطاطا", "دبس رمان", "حار"]
+      },
+      {
+        id: 9,
+        name: "وجبة كريسبي 5 قطع",
+        category: "meals",
+        price: 8.00,
+        image: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80",
+        desc: "5 قطع دجاج كريسبي مقرمش مع بطاطا وكول سلو وخبز",
+        ingredients: ["كول سلو", "ثوم", "كاتشب", "بطاطا", "خبز"]
+      },
+      {
+        id: 10,
+        name: "عصير برتقال طبيعي طازج",
+        category: "drinks",
+        price: 2.00,
+        image: "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80",
+        desc: "عصير برتقال معصور طازجاً 100% بدون إضافات",
+        ingredients: ["ثلج", "سكر إضافي"]
+      },
+      {
+        id: 11,
+        name: "ليموناضة بالنعناع المثلجة",
+        category: "drinks",
+        price: 2.00,
+        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?auto=format&fit=crop&w=600&q=80",
+        desc: "ليمون طازج منعش مخفوق مع أوراق النعناع الأخضر",
+        ingredients: ["ثلج", "نعناع", "سكر"]
+      },
+      {
+        id: 12,
+        name: "مشروب غازي (بيبسي / سفن أب)",
+        category: "drinks",
+        price: 1.00,
+        image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80",
+        desc: "علبة مشروب غازي باردة جداً 330 مل",
+        ingredients: ["ثلج", "شريحة ليمون"]
+      }
+    ];
+
+    // Application State
+    let orderMode = localStorage.getItem('shater_order_mode') || 'dinein'; // 'dinein' or 'takeaway'
+    let cart = JSON.parse(localStorage.getItem('shater_cart') || '[]');
+    let customerDetails = JSON.parse(localStorage.getItem('shater_customer') || 'null');
+    let removedIngredientsMap = {}; // { itemId: Set(['ثوم', ...]) }
+    let currentCategory = 'all';
+
+    // Map variables
+    let mapInstance = null;
+    let mapMarker = null;
+    let selectedCoords = customerDetails?.coords || { lat: 34.4380, lng: 35.8350 };
+    let simulatedFarMode = false;
+
+    // ==================== INITIALIZATION ====================
+    window.addEventListener('DOMContentLoaded', () => {
+      renderMenu();
+      updateCartUI();
+      updateModeUI();
+      populateCustomerForm();
+    });
+
+    // ==================== NAVIGATION & DRAWER ====================
+    function toggleDrawer() {
+      const drawer = document.getElementById('nav-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const isClosed = drawer.classList.contains('translate-x-full');
+      
+      if (isClosed) {
+        drawer.classList.remove('translate-x-full');
+        backdrop.classList.remove('hidden');
+      } else {
+        drawer.classList.add('translate-x-full');
+        backdrop.classList.add('hidden');
+      }
+    }
+
+    function navigateTo(pageName) {
+      document.querySelectorAll('.page-section').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById(`page-${pageName}`);
+      if (target) target.classList.remove('hidden');
+
+      // Highlight active link in drawer
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        if (btn.dataset.nav === pageName) {
+          btn.classList.add('bg-amber-100', 'text-brand-brown');
+        } else {
+          btn.classList.remove('bg-amber-100', 'text-brand-brown');
+        }
+      });
+
+      // Initialize map if navigating to 'details'
+      if (pageName === 'details') {
+        setTimeout(() => {
+          initMap();
+        }, 150);
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ==================== ORDER MODE HANDLING (DINE-IN VS TAKE AWAY) ====================
+    function handleStartOrder(mode) {
+      orderMode = mode;
+      localStorage.setItem('shater_order_mode', mode);
+      updateModeUI();
+
+      if (mode === 'dinein') {
+        // طلب داخل المحل -> يفتح المنيو مباشرة
+        navigateTo('menu');
+        showToast('تم اختيار: طلب داخل المحل');
+      } else {
+        // طلب Take Away -> يتحقق إن كانت التفاصيل محفوظة مسبقاً
+        if (!customerDetails || !customerDetails.name || !customerDetails.phone) {
+          showToast('يرجى إدخال عنوانك ومعلوماتك لمرة واحدة للتوصيل', 'fa-location-dot');
+          navigateTo('details');
+        } else {
+          navigateTo('menu');
+          showToast(`أهلاً ${customerDetails.name}! تم تفعيل التوصيل لعنوانك المحفوظ`);
+        }
+      }
+    }
+
+    function switchOrderMode(mode) {
+      if (mode === 'takeaway' && (!customerDetails || !customerDetails.name)) {
+        // Close cart if open and redirect to details form
+        document.getElementById('cart-modal').classList.add('hidden');
+        orderMode = 'takeaway';
+        localStorage.setItem('shater_order_mode', 'takeaway');
+        updateModeUI();
+        showToast('يرجى تعبئة معلومات التوصيل أولاً', 'fa-location-dot');
+        navigateTo('details');
+        return;
+      }
+      orderMode = mode;
+      localStorage.setItem('shater_order_mode', mode);
+      updateModeUI();
+      updateCartUI();
+    }
+
+    function updateModeUI() {
+      const badge = document.getElementById('header-mode-badge');
+      const dineBtn = document.getElementById('mode-btn-dinein');
+      const takeBtn = document.getElementById('mode-btn-takeaway');
+      const cartDineBtn = document.getElementById('cart-mode-dinein');
+      const cartTakeBtn = document.getElementById('cart-mode-takeaway');
+      const deliveryInfoBar = document.getElementById('menu-delivery-info');
+
+      if (orderMode === 'takeaway') {
+        badge.innerHTML = '<i class="fa-solid fa-motorcycle ml-1"></i> طلب Take Away';
+        badge.className = 'text-[11px] font-bold text-white bg-brand-red px-2.5 py-0.5 rounded-full mt-1';
+        
+        takeBtn?.classList.add('bg-brand-red', 'text-white', 'shadow-xs');
+        takeBtn?.classList.remove('text-stone-600');
+        dineBtn?.classList.remove('bg-brand-brown', 'text-white', 'shadow-xs');
+        dineBtn?.classList.add('text-stone-600');
+
+        cartTakeBtn?.classList.add('bg-brand-red', 'text-white');
+        cartDineBtn?.classList.remove('bg-brand-brown', 'text-white');
+
+        if (customerDetails && deliveryInfoBar) {
+          deliveryInfoBar.classList.remove('hidden');
+          document.getElementById('menu-customer-addr').textContent = customerDetails.address;
+          const fee = getDeliveryFee();
+          document.getElementById('menu-delivery-fee-label').textContent = `$${fee.toFixed(2)}`;
+        }
+      } else {
+        badge.innerHTML = '<i class="fa-solid fa-utensils ml-1"></i> طلب داخل المحل';
+        badge.className = 'text-[11px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full mt-1';
+
+        dineBtn?.classList.add('bg-brand-brown', 'text-white', 'shadow-xs');
+        dineBtn?.classList.remove('text-stone-600');
+        takeBtn?.classList.remove('bg-brand-red', 'text-white', 'shadow-xs');
+        takeBtn?.classList.add('text-stone-600');
+
+        cartDineBtn?.classList.add('bg-brand-brown', 'text-white');
+        cartTakeBtn?.classList.remove('bg-brand-red', 'text-white');
+
+        deliveryInfoBar?.classList.add('hidden');
+      }
+
+      // Show saved customer banner on Home & Drawer
+      if (customerDetails && customerDetails.name) {
+        document.getElementById('home-saved-banner')?.classList.remove('hidden');
+        document.getElementById('home-saved-name').textContent = customerDetails.name;
+        document.getElementById('drawer-saved-tag')?.classList.remove('hidden');
+      }
+    }
+
+    // ==================== MENU & INGREDIENT STRIKETHROUGH ====================
+    function filterMenu(category) {
+      currentCategory = category;
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        if (btn.dataset.cat === category) {
+          btn.classList.add('bg-brand-brown', 'text-white', 'shadow-sm');
+          btn.classList.remove('bg-white', 'text-stone-700', 'border', 'border-stone-200');
+        } else {
+          btn.classList.remove('bg-brand-brown', 'text-white', 'shadow-sm');
+          btn.classList.add('bg-white', 'text-stone-700', 'border', 'border-stone-200');
+        }
+      });
+      renderMenu();
+    }
+
+    function toggleIngredient(itemId, ingredientName, btnEl) {
+      if (!removedIngredientsMap[itemId]) {
+        removedIngredientsMap[itemId] = new Set();
+      }
+      const set = removedIngredientsMap[itemId];
+      if (set.has(ingredientName)) {
+        set.delete(ingredientName);
+        btnEl.classList.remove('removed');
+      } else {
+        set.add(ingredientName);
+        btnEl.classList.add('removed');
+      }
+    }
+
+    function renderMenu() {
+      const grid = document.getElementById('menu-grid');
+      const filtered = currentCategory === 'all' 
+        ? MENU_ITEMS 
+        : MENU_ITEMS.filter(item => item.category === currentCategory);
+
+      grid.innerHTML = filtered.map(item => {
+        const lbpPrice = (item.price * LBP_RATE).toLocaleString();
+        const removedSet = removedIngredientsMap[item.id] || new Set();
+
+        const ingredientsHtml = item.ingredients.map(ing => {
+          const isRemoved = removedSet.has(ing);
+          return `
+            <button type="button" 
+                    onclick="toggleIngredient(${item.id}, '${ing}', this)"
+                    title="انقر لشطب أو إرجاع ${ing}"
+                    class="ing-pill ${isRemoved ? 'removed' : ''} text-xs font-bold px-2.5 py-1 rounded-lg border border-stone-200 bg-stone-50 text-stone-700 hover:border-amber-400 cursor-pointer flex items-center gap-1">
+              <span>${ing}</span>
+            </button>
+          `;
+        }).join('');
+
+        return `
+          <div class="bg-white rounded-3xl shadow-sm hover:shadow-md border border-amber-900/10 overflow-hidden flex flex-col justify-between transition">
+            <div>
+              <!-- Item Image -->
+              <div class="relative h-48 overflow-hidden bg-stone-100">
+                <img src="${item.image}" 
+                     onerror="this.src='https://placehold.co/600x400/5C2D16/FFFFFF?text=${encodeURIComponent(item.name)}'"
+                     alt="${item.name}" 
+                     class="w-full h-full object-cover hover:scale-105 transition duration-500" />
+                <span class="absolute top-3 right-3 bg-brand-dark/85 backdrop-blur-xs text-amber-300 text-[11px] font-extrabold px-3 py-1 rounded-full">
+                  ${getCategoryArabicName(item.category)}
+                </span>
+              </div>
+
+              <!-- Content -->
+              <div class="p-4 pb-2">
+                <div class="flex items-start justify-between gap-2">
+                  <h3 class="text-lg font-black text-stone-900 leading-snug">${item.name}</h3>
+                  <div class="text-left shrink-0">
+                    <span class="text-lg font-black text-brand-red block leading-none">$${item.price.toFixed(2)}</span>
+                    <span class="text-[11px] font-bold text-stone-400">${lbpPrice} ل.ل</span>
+                  </div>
+                </div>
+                <p class="text-xs text-stone-500 mt-1.5 leading-relaxed">${item.desc}</p>
+
+                <!-- Clickable Ingredients Section -->
+                <div class="mt-3.5 pt-3 border-t border-stone-100">
+                  <div class="text-[11px] font-extrabold text-stone-400 mb-2 flex items-center justify-between">
+                    <span>المكونات (انقر على ما لا تريده لشطبه):</span>
+                  </div>
+                  <div class="flex flex-wrap gap-1.5">
+                    ${ingredientsHtml}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Add to Cart Button -->
+            <div class="p-4 pt-3">
+              <button onclick="addToCart(${item.id})" class="w-full py-3 px-4 rounded-2xl bg-brand-brown hover:bg-brand-red text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm active:scale-95 transition">
+                <i class="fa-solid fa-cart-plus"></i>
+                <span>أضف إلى السلة</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function getCategoryArabicName(cat) {
+      const map = {
+        sandwiches: 'السندويشات',
+        meals: 'الوجبات',
+        fastfood: 'وجبات سريعة',
+        drinks: 'عصائر ومشروبات'
+      };
+      return map[cat] || '';
+    }
+
+    // ==================== CART MANAGEMENT ====================
+    function addToCart(itemId) {
+      const item = MENU_ITEMS.find(i => i.id === itemId);
+      if (!item) return;
+
+      const removedList = removedIngredientsMap[itemId] 
+        ? Array.from(removedIngredientsMap[itemId]).sort() 
+        : [];
+      
+      // Create unique key combining item ID + removed ingredients so customized items stay distinct
+      const customKey = `${item.id}_${removedList.join('-')}`;
+
+      const existing = cart.find(c => c.customKey === customKey);
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        cart.push({
+          customKey,
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          qty: 1,
+          removed: removedList
+        });
+      }
+
+      // Reset strikethroughs on card after adding so next item starts fresh
+      removedIngredientsMap[itemId] = new Set();
+      renderMenu();
+
+      saveCart();
+      updateCartUI();
+
+      const noteText = removedList.length > 0 ? ` (بدون: ${removedList.join('، ')})` : '';
+      showToast(`تمت إضافة ${item.name}${noteText}`);
+    }
+
+    function updateCartQty(customKey, delta) {
+      const idx = cart.findIndex(c => c.customKey === customKey);
+      if (idx === -1) return;
+
+      cart[idx].qty += delta;
+      if (cart[idx].qty <= 0) {
+        cart.splice(idx, 1);
+      }
+      saveCart();
+      updateCartUI();
+    }
+
+    function clearCart() {
+      cart = [];
+      saveCart();
+      updateCartUI();
+      showToast('تم إفراغ السلة', 'fa-trash');
+    }
+
+    function saveCart() {
+      localStorage.setItem('shater_cart', JSON.stringify(cart));
+    }
+
+    function toggleCartModal() {
+      const modal = document.getElementById('cart-modal');
+      modal.classList.toggle('hidden');
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const totalQty = cart.reduce((sum, item) => sum + item.qty, 0);
+      document.getElementById('cart-badge').textContent = totalQty;
+      document.getElementById('float-cart-count').textContent = totalQty;
+
+      const floatBar = document.getElementById('floating-cart-bar');
+      if (totalQty > 0) {
+        floatBar.classList.remove('hidden');
+      } else {
+        floatBar.classList.add('hidden');
+      }
+
+      const container = document.getElementById('cart-items-container');
+      const footer = document.getElementById('cart-footer');
+
+      if (cart.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-10">
+            <div class="w-16 h-16 rounded-full bg-amber-100 text-brand-amber flex items-center justify-center mx-auto mb-3 text-2xl">
+              <i class="fa-solid fa-basket-shopping"></i>
+            </div>
+            <h4 class="font-extrabold text-stone-700">سلة الطلبات فارغة حالياً</h4>
+            <p class="text-xs text-stone-400 mt-1">اختر وجباتك وسندويشاتك المفضلة من المنيو</p>
+            <button onclick="toggleCartModal(); navigateTo('menu');" class="mt-4 px-5 py-2.5 rounded-xl bg-brand-brown text-white text-xs font-extrabold">
+              تصفح المنيو
+            </button>
+          </div>
+        `;
+        footer.classList.add('hidden');
+        return;
+      }
+
+      footer.classList.remove('hidden');
+
+      // Render Cart Items
+      container.innerHTML = cart.map(item => {
+        const lineTotal = (item.price * item.qty).toFixed(2);
+        const removedBadge = item.removed && item.removed.length > 0
+          ? `<div class="mt-1 inline-flex items-center gap-1 text-[11px] font-bold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg">
+               <i class="fa-solid fa-ban text-[10px]"></i>
+               <span>بدون: ${item.removed.join('، ')}</span>
+             </div>`
+          : `<div class="text-[11px] text-stone-400 mt-0.5">كامل المكونات</div>`;
+
+        return `
+          <div class="bg-stone-50 p-3.5 rounded-2xl border border-stone-200/80 flex items-center justify-between gap-3">
+            <div class="flex-1">
+              <h4 class="font-extrabold text-sm text-stone-900">${item.name}</h4>
+              ${removedBadge}
+              <div class="text-xs font-black text-brand-brown mt-1.5">$${lineTotal}</div>
+            </div>
+
+            <div class="flex items-center gap-2 bg-white border border-stone-200 rounded-xl p-1">
+              <button onclick="updateCartQty('${item.customKey}', 1)" class="w-7 h-7 rounded-lg bg-amber-100 text-brand-brown font-black hover:bg-amber-200 flex items-center justify-center">+</button>
+              <span class="w-6 text-center font-black text-sm">${item.qty}</span>
+              <button onclick="updateCartQty('${item.customKey}', -1)" class="w-7 h-7 rounded-lg bg-stone-100 text-stone-700 font-black hover:bg-stone-200 flex items-center justify-center">-</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Calculate Totals
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const isTakeAway = orderMode === 'takeaway';
+      const deliveryFee = isTakeAway ? getDeliveryFee() : 0;
+      const finalTotal = subtotal + deliveryFee;
+      const finalLbp = Math.round(finalTotal * LBP_RATE).toLocaleString();
+
+      document.getElementById('cart-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+      document.getElementById('cart-final-total').textContent = `$${finalTotal.toFixed(2)}`;
+      document.getElementById('cart-final-lbp').textContent = `${finalLbp} ل.ل`;
+      document.getElementById('float-cart-total').textContent = `$${finalTotal.toFixed(2)}`;
+
+      const deliveryRow = document.getElementById('cart-delivery-row');
+      const customerBox = document.getElementById('cart-customer-box');
+
+      if (isTakeAway) {
+        deliveryRow.classList.remove('hidden');
+        const dist = getDistanceKm();
+        document.getElementById('cart-dist-label').textContent = dist > 100 ? 'أبعد من 100 كلم' : 'أقل من 100 كلم';
+        document.getElementById('cart-delivery-fee').textContent = `$${deliveryFee.toFixed(2)}`;
+
+        if (customerDetails) {
+          customerBox.classList.remove('hidden');
+          document.getElementById('cart-customer-summary').textContent = 
+            `${customerDetails.name} (${customerDetails.phone}) - ${customerDetails.address}، مبنى ${customerDetails.building}، طابق ${customerDetails.floor}` +
+            (customerDetails.landmark ? ` (قرب ${customerDetails.landmark})` : '');
+        }
+      } else {
+        deliveryRow.classList.add('hidden');
+        customerBox.classList.add('hidden');
+      }
+    }
+
+    // ==================== MAP & DISTANCE CALCULATION ====================
+    function initMap() {
+      if (mapInstance) {
+        mapInstance.invalidateSize();
+        return;
+      }
+
+      mapInstance = L.map('map-container').setView([selectedCoords.lat, selectedCoords.lng], 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(mapInstance);
+
+      // Restaurant Marker (Tripoli)
+      const restIcon = L.divIcon({
+        html: '<div class="w-8 h-8 rounded-full bg-brand-brown text-white flex items-center justify-center shadow-lg border-2 border-white"><i class="fa-solid fa-utensils text-xs"></i></div>',
+        className: ''
+      });
+      L.marker([RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng], { icon: restIcon })
+        .addTo(mapInstance)
+        .bindPopup('<b>مطعم الشاطر صلاح</b><br>طرابلس - أبي سمراء');
+
+      // Customer Draggable Marker
+      mapMarker = L.marker([selectedCoords.lat, selectedCoords.lng], { draggable: true }).addTo(mapInstance);
+      mapMarker.bindPopup('موقع التوصيل الخاص بك').openPopup();
+
+      mapMarker.on('dragend', function(e) {
+        const pos = e.target.getLatLng();
+        selectedCoords = { lat: pos.lat, lng: pos.lng };
+        simulatedFarMode = false;
+        updateDistanceDisplay();
+      });
+
+      mapInstance.on('click', function(e) {
+        selectedCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+        mapMarker.setLatLng([selectedCoords.lat, selectedCoords.lng]);
+        simulatedFarMode = false;
+        updateDistanceDisplay();
+      });
+
+      updateDistanceDisplay();
+    }
+
+    function locateUserGPS() {
+      if (!navigator.geolocation) {
+        showToast('المتصفح لا يدعم تحديد الموقع الجغرافي', 'fa-triangle-exclamation');
+        return;
+      }
+      showToast('جاري تحديد موقعك الحالي...', 'fa-spinner');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          selectedCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          simulatedFarMode = false;
+          if (mapInstance && mapMarker) {
+            mapInstance.setView([selectedCoords.lat, selectedCoords.lng], 16);
+            mapMarker.setLatLng([selectedCoords.lat, selectedCoords.lng]);
+          }
+          updateDistanceDisplay();
+          showToast('تم تحديد موقعك بنجاح!');
+        },
+        () => {
+          showToast('تعذر الوصول إلى GPS، يرجى النقر على الخريطة يدوياً', 'fa-circle-exclamation');
+        }
+      );
+    }
+
+    // Haversine formula to compute real distance in km between Restaurant & Customer pin
+    function calculateHaversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // Earth radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    }
+
+    function getDistanceKm() {
+      if (simulatedFarMode) return 115.0;
+      const d = calculateHaversineKm(
+        RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng,
+        selectedCoords.lat, selectedCoords.lng
+      );
+      return Math.max(0.5, Number(d.toFixed(1)));
+    }
+
+    function getDeliveryFee() {
+      const dist = getDistanceKm();
+      // القاعدة المطلوبة: أبعد من 100 كلم = $2.00 ، أقل من 100 كلم = $1.20
+      return dist > 100 ? 2.00 : 1.20;
+    }
+
+    function toggleFarDistanceTest() {
+      simulatedFarMode = !simulatedFarMode;
+      if (simulatedFarMode) {
+        // Move pin temporarily south towards Saida/Tyre (>100km from Tripoli) for visual demo
+        selectedCoords = { lat: 33.5600, lng: 35.3750 };
+      } else {
+        selectedCoords = { lat: 34.4380, lng: 35.8350 };
+      }
+      if (mapInstance && mapMarker) {
+        mapInstance.setView([selectedCoords.lat, selectedCoords.lng], simulatedFarMode ? 8 : 14);
+        mapMarker.setLatLng([selectedCoords.lat, selectedCoords.lng]);
+      }
+      updateDistanceDisplay();
+    }
+
+    function updateDistanceDisplay() {
+      const dist = getDistanceKm();
+      const fee = getDeliveryFee();
+      const feeLbp = Math.round(fee * LBP_RATE).toLocaleString();
+
+      document.getElementById('calc-distance-text').textContent = `${dist} كلم`;
+      const badge = document.getElementById('calc-distance-badge');
+      if (dist > 100) {
+        badge.textContent = 'أبعد من 100 كلم';
+        badge.className = 'text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold';
+      } else {
+        badge.textContent = 'أقل من 100 كلم';
+        badge.className = 'text-[11px] bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-bold';
+      }
+
+      document.getElementById('calc-fee-usd').textContent = `$${fee.toFixed(2)}`;
+      document.getElementById('calc-fee-lbp').textContent = feeLbp;
+    }
+
+    // ==================== SAVE & LOAD CUSTOMER DETAILS ====================
+    function populateCustomerForm() {
+      if (!customerDetails) return;
+      document.getElementById('cust-name').value = customerDetails.name || '';
+      document.getElementById('cust-phone').value = customerDetails.phone || '';
+      document.getElementById('cust-address').value = customerDetails.address || '';
+      document.getElementById('cust-building').value = customerDetails.building || '';
+      document.getElementById('cust-floor').value = customerDetails.floor || '';
+      document.getElementById('cust-landmark').value = customerDetails.landmark || '';
+      if (customerDetails.coords) {
+        selectedCoords = customerDetails.coords;
+      }
+    }
+
+    function saveCustomerDetails(e) {
+      e.preventDefault();
+
+      customerDetails = {
+        name: document.getElementById('cust-name').value.trim(),
+        phone: document.getElementById('cust-phone').value.trim(),
+        address: document.getElementById('cust-address').value.trim(),
+        building: document.getElementById('cust-building').value.trim(),
+        floor: document.getElementById('cust-floor').value.trim(),
+        landmark: document.getElementById('cust-landmark').value.trim(),
+        coords: selectedCoords,
+        distanceKm: getDistanceKm(),
+        deliveryFee: getDeliveryFee()
+      };
+
+      localStorage.setItem('shater_customer', JSON.stringify(customerDetails));
+      orderMode = 'takeaway';
+      localStorage.setItem('shater_order_mode', 'takeaway');
+
+      updateModeUI();
+      updateCartUI();
+      showToast('تم حفظ عنوانك ومعلوماتك بنجاح!');
+      navigateTo('menu');
+    }
+
+    // ==================== WHATSAPP ORDER CHECKOUT ====================
+    function checkoutViaWhatsApp() {
+      if (cart.length === 0) return;
+
+      if (orderMode === 'takeaway' && (!customerDetails || !customerDetails.name)) {
+        toggleCartModal();
+        showToast('يرجى إدخال معلومات التوصيل أولاً', 'fa-location-dot');
+        navigateTo('details');
+        return;
+      }
+
+      const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+      const isTakeAway = orderMode === 'takeaway';
+      const deliveryFee = isTakeAway ? getDeliveryFee() : 0;
+      const finalTotal = subtotal + deliveryFee;
+
+      let msg = `*طلب جديد - مطعم الشاطر صلاح* 🍔🌯\n`;
+      msg += `--------------------------\n`;
+      msg += `*نوع الطلب:* ${isTakeAway ? 'Take Away (توصيل) 🛵' : 'داخل المحل 🍽️'}\n\n`;
+      msg += `*تفاصيل الطلب:*\n`;
+
+      cart.forEach((item, index) => {
+        const lineTotal = (item.price * item.qty).toFixed(2);
+        msg += `${index + 1}. *${item.name}* (الكمية: ${item.qty}) - $${lineTotal}\n`;
+        if (item.removed && item.removed.length > 0) {
+          msg += `   ❌ *بدون:* ${item.removed.join('، ')}\n`;
+        }
+      });
+
+      msg += `\n--------------------------\n`;
+      msg += `*المجموع الفرعي:* $${subtotal.toFixed(2)}\n`;
+
+      if (isTakeAway && customerDetails) {
+        const dist = getDistanceKm();
+        msg += `*أجرة الدلفري (${dist > 100 ? 'أبعد من 100 كلم' : 'أقل من 100 كلم'}):* $${deliveryFee.toFixed(2)}\n`;
+        msg += `*الإجمالي النهائي:* $${finalTotal.toFixed(2)} (${Math.round(finalTotal * LBP_RATE).toLocaleString()} ل.ل)\n\n`;
+        msg += `*بيانات الزبون وعنوان التوصيل:* 📍\n`;
+        msg += `• *الاسم:* ${customerDetails.name}\n`;
+        msg += `• *الهاتف:* ${customerDetails.phone}\n`;
+        msg += `• *العنوان:* ${customerDetails.address}\n`;
+        msg += `• *المبنى:* ${customerDetails.building} | *الطابق:* ${customerDetails.floor}\n`;
+        if (customerDetails.landmark) {
+          msg += `• *معلم مشهور قريب:* ${customerDetails.landmark}\n`;
+        }
+        msg += `• *الموقع على الخريطة (Maps):*\nhttps://maps.google.com/?q=${customerDetails.coords.lat},${customerDetails.coords.lng}\n`;
+      } else {
+        msg += `*الإجمالي النهائي:* $${finalTotal.toFixed(2)} (${Math.round(finalTotal * LBP_RATE).toLocaleString()} ل.ل)\n`;
+      }
+
+      const encodedMsg = encodeURIComponent(msg);
+      const waUrl = `https://wa.me/${RESTAURANT_WHATSAPP}?text=${encodedMsg}`;
+      window.open(waUrl, '_blank');
+    }
+
+    function sendContactWhatsApp(e) {
+      e.preventDefault();
+      const name = document.getElementById('contact-name').value.trim();
+      const text = document.getElementById('contact-msg').value.trim();
+      const msg = `مرحباً مطعم الشاطر صلاح،\nالاسم: ${name}\nالرسالة: ${text}`;
+      window.open(`https://wa.me/${RESTAURANT_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    // ==================== TOAST UTILITY ====================
+    let toastTimer = null;
+    function showToast(message, iconClass = 'fa-circle-check') {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-msg').textContent = message;
+      document.getElementById('toast-icon').className = `fa-solid ${iconClass} text-amber-400 text-lg`;
+      
+      toast.classList.remove('hidden');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
